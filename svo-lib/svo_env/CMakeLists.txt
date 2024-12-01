@@ -2,12 +2,12 @@ project(svo_env)
 cmake_minimum_required(VERSION 2.8.3)
 
 # Set PYTHONPATH by modifying the environment
-set(ENV{PYTHONPATH} "/usr/bin/python3:$ENV{PYTHONPATH}")
+set(ENV{PYTHONPATH} "/home/vinaylanka/miniconda3/bin/python:$ENV{PYTHONPATH}")
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(OpenMP)
 
-find_package(Python REQUIRED)
+find_package(Python)
 find_package(pybind11 REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 

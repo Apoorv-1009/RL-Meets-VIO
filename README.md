@@ -138,7 +138,7 @@ To use wandb for logging, set the `wandb_logging` variable to `True` and specify
 The wandb initialization is done inside the `ppo.py` file, where the `<entity>` shoud be replaced before running.
 To train the model inside the docker container, run the following command by replacing <GPU_ID> with the GPU ID to be used:
 
-`CUDA_VISIBLE_DEVICES=<GPU_ID> python train.py`
+`CUDA_VISIBLE_DEVICES=0 python train.py`
 
 ## Testing
 Before testing the model, set all the necessary testing parameters, the path to the dataset, config and logging directory in the `config_eval.py` file.

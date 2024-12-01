@@ -122,7 +122,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             device=self.device,
             gamma=self.gamma,
             gae_lambda=self.gae_lambda,
-            n_envs=self.n_envs,
+            n_envs=1,
         )
         self.policy = self.policy_class(  # type: ignore[assignment]
             self.observation_space, self.action_space, self.lr_schedule, use_sde=self.use_sde, **self.policy_kwargs
@@ -151,7 +151,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         """
         assert self._last_obs is not None, "No previous observation was provided"
         # Switch to eval mode (this affects batch norm / dropout)
-        self.policy.set_training_mode(False)
+        self.policy.set_training_mode(True)
 
         n_steps = 0
         rollout_buffer.reset()

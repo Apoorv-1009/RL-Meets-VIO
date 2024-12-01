@@ -1,7 +1,7 @@
 import os
 import sys
 parent = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-svo_lib_path = os.path.join(os.path.dirname(parent), 'svo-lib/build/svo_env')
+svo_lib_path = os.path.join(os.path.dirname(parent), '/home/vinaylanka/vo_rl/svo-lib/build/svo_env')
 sys.path.append(svo_lib_path)
 import svo_env
 import os
@@ -30,8 +30,6 @@ test_split = {
 
 class EurocLoader:
     def __init__(self, root_path, mode, num_envs, val_traj_ids=None, traj_name=None):
-        assert mode == 'val'
-
         self.root_path = root_path
         self.num_envs = num_envs
         self.val_traj_ids = val_traj_ids
@@ -44,7 +42,6 @@ class EurocLoader:
             self.extract_trajectory(traj_name)
         else:
             print("[EuRoC Dataloader] Loading trajectories")
-            print(test_split)
             self.extract_trajectories()
 
         self.extract_poses_images()
@@ -58,6 +55,8 @@ class EurocLoader:
         trajectories = glob.glob(os.path.join(self.root_path, '*'))
         self.trajectories_paths = [traj for traj in trajectories if self.is_test_scene(traj)]
         self.trajectories_paths.sort()
+
+        print(self.trajectories_paths)
 
         if self.val_traj_ids != -1 and self.val_traj_ids is not None:
             self.trajectories_paths = [self.trajectories_paths[i] for i in self.val_traj_ids]
@@ -171,7 +170,8 @@ class EurocLoader:
         traj_time_idx = (self.internal_idx - self.start_dataloader_idx)
         traj_time_idx = traj_time_idx.astype('int')
 
-        poses = np.zeros([self.num_envs, 7])
+        poses = np.zeros([self.num_envs, int(self.nr_samples_per_traj), 7])
+        # poses = np.zeros([self.num_envs, 7])
         image_paths = []
         for i in range(self.num_envs):
             traj_name = '_'.join(self.trajectories_paths[self.traj_idx[i]].split(os.sep)[2:])
@@ -180,7 +180,7 @@ class EurocLoader:
                                             self.image_filenames[traj_name][traj_time_idx[i]]))
 
         images = svo_env.load_image_batch(image_paths, self.num_envs, self.img_h, self.img_w)
-
+        # np.reshape(poses, [self.num_envs, len(self.nr_samples_per_traj), 7])
         return images, poses, new_sequence_mask
 
     def __len__(self):

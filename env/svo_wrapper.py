@@ -18,9 +18,7 @@ from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvObs,
     VecEnvStepReturn,
 )
-from dataloader.tartan_loader import TartanLoader
 from dataloader.euroc_loader import EurocLoader
-from dataloader.tum_loader import TumLoader
 from env.utils.trajectory_alignment import align_umeyama
 from env.utils.running_mean_std import RunningMeanStd
 
@@ -69,13 +67,7 @@ class VecSVOEnv(VecEnv):
         self.obs_rms_new = RunningMeanStd(shape=[1, self.agent_obs_dim_fixed])
 
         self.env = svo_env.SVOEnv(params_yaml_path, calib_yaml_path, num_envs, initialize_glog)
-
-        if dataset == 'tartanair':
-            self.dataloader = TartanLoader(dataset_dir, self.mode, self.num_envs, self.val_traj_ids)
-        elif dataset == 'euroc':
-            self.dataloader = EurocLoader(dataset_dir, self.mode, self.num_envs, self.val_traj_ids)
-        elif dataset == 'tum':
-            self.dataloader = TumLoader(dataset_dir, self.mode, self.num_envs, self.val_traj_ids)
+        self.dataloader = EurocLoader(dataset_dir, self.mode, self.num_envs, self.val_traj_ids)
         self.dataloader_iter = iter(self.dataloader)
 
         self.timing_dict = None

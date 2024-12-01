@@ -28,7 +28,7 @@ def main(config):
             config.dataset_dir, config.n_envs, reward_config=config.agent.reward,
             mode='train', initialize_glog=True)
         val_env = VecSVOEnv(
-            config.svo_params_file, config.svo_calib_file, config.dataset_dir, 32,
+            config.svo_params_file, config.svo_calib_file, config.dataset_dir, 1,
             reward_config=config.agent.reward, mode='val', initialize_glog=False)
     else:
         assert False, "Unknown VO algorithm"

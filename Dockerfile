@@ -7,7 +7,7 @@ ENV NVIDIA_VISIBLE_DEVICES \
 ENV NVIDIA_DRIVER_CAPABILITIES \
     ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
-ENV USERNAME <your_username>
+ENV USERNAME vinaylanka
 ENV HOME /home/$USERNAME
 
 RUN useradd -m $USERNAME && \
@@ -18,8 +18,8 @@ RUN useradd -m $USERNAME && \
         echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
         chmod 0440 /etc/sudoers.d/$USERNAME && \
         # Replace 1003 with your user/group id
-        usermod  --uid 1003 $USERNAME && \
-  groupmod --gid 1001 $USERNAME
+        usermod  --uid 1000 $USERNAME && \
+  groupmod --gid 1000 $USERNAME
 
 # svo-lib dependecies
 RUN apt-get update
@@ -40,5 +40,5 @@ COPY requirements.txt /app/
 WORKDIR /app
 RUN pip install -r requirements.txt
 
-USER <your_username>
-WORKDIR <path>/vo_rl
+USER vinaylanka
+WORKDIR /home/vinaylanka/vo_rl
