@@ -100,13 +100,32 @@ class AttentionNetwork(nn.Module):
         b = features.shape[0]
         variable_features = features[:, self.obs_dim_fixed:].reshape([b, -1, self.variable_feature_dim])
         valid_mask = torch.abs(variable_features.sum([1, 2])) != 0
-        out_attn_features = torch.zeros([b, self.variable_flattened_dim], device=features.device)
+        out_attn_features = torch.zeros([b, self.variable_flattened_dim]).to(device=features.device)
         if valid_mask.sum() != 0:
             key_padding_mask = torch.abs(variable_features[valid_mask, :, :].sum(-1)) == 0
             out_attn_features[valid_mask] = self.variable_encoder.forward(variable_features[valid_mask, :, :],
                                                                           key_padding_mask).flatten(1,2)
 
         return torch.cat([features[:, :self.obs_dim_fixed], out_attn_features], dim=1)
+        
+        # batch_size = out_attn_features.shape[0]
+        # prev_output_dim = out_attn_features.shape[1]
+        # # print("batch_size: ",batch_size)
+        # # print("prev_output_dim: ",prev_output_dim)
+        # # print("obs_dim_fixed: ",self.obs_dim_fixed)
+        # cross_attention_pretext = nn.Linear(out_attn_features.shape[1],self.obs_dim_fixed).to(device=features.device)
+        # cross_attention_block = nn.MultiheadAttention(self.num_heads,self.num_heads,batch_first=True,kdim=self.num_heads,vdim=self.num_heads).to(device=features.device)
+        # cross_attention_posttext = nn.Linear(self.num_heads*self.obs_dim_fixed,prev_output_dim+self.obs_dim_fixed).to(device=features.device)
+        # cross_attention_gelu = nn.GELU().to(device=features.device)
+        
+        # out_attn_features_ca = cross_attention_pretext(out_attn_features).reshape(-1,self.obs_dim_fixed,1)
+        # ca_output = cross_attention_block(query=torch.tile(features[:,:self.obs_dim_fixed].reshape(-1,self.obs_dim_fixed,1),[1,1,self.num_heads]).to(device=features.device),
+        #                                   key=torch.tile(out_attn_features_ca.to(device=features.device),[1,1,self.num_heads]),
+        #                                   value=torch.tile(out_attn_features_ca.to(device=features.device),[1,1,self.num_heads]))[0]
+        # # print("ca_output_shape: ",ca_output.shape)
+        # ca_output_post_process = cross_attention_gelu(cross_attention_posttext(ca_output.reshape(batch_size,-1)))
+
+        # return ca_output_post_process
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """

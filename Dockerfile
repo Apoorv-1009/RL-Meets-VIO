@@ -42,3 +42,9 @@ RUN pip install -r requirements.txt
 
 USER vinaylanka
 WORKDIR /home/vinaylanka/vo_rl
+
+# RUN pip3 install --upgrade typing_extensions
+
+# RUN --mount=type=cache,target=/root/.cache/pip \
+#    pip uninstall -y typing_extensions && \
+#    pip install typing_extensions==4.11.0

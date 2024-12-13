@@ -11,3 +11,4 @@ scipy
 plotly
 SciencePlots
 pycryptodomex
+typing_extensions==4.11.0

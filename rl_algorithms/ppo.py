@@ -87,7 +87,7 @@ class PPO(OnPolicyAlgorithm):
         n_epochs: int = 10,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
-        clip_range: Union[float, Schedule] = 0.2,
+        clip_range: Union[float, Schedule] = 0.2, #was previously 0.2
         clip_range_vf: Union[None, float, Schedule] = None,
         normalize_advantage: bool = True,
         ent_coef: float = 0.0,
@@ -95,7 +95,7 @@ class PPO(OnPolicyAlgorithm):
         max_grad_norm: float = 0.5,
         use_sde: bool = False,
         sde_sample_freq: int = -1,
-        target_kl: Optional[float] = None,
+        target_kl: Optional[float] = 0.5,
         stats_window_size: int = 100,
         tensorboard_log: Optional[str] = None,
         log_dir: Optional[str] = None,
@@ -166,7 +166,7 @@ class PPO(OnPolicyAlgorithm):
         self.clip_range = clip_range
         self.clip_range_vf = clip_range_vf
         self.normalize_advantage = normalize_advantage
-        self.target_kl = target_kl
+        self.target_kl = 0.5
 
         if _init_setup_model:
             self._setup_model()

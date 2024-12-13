@@ -13,7 +13,7 @@ wandb_logging: False
 wandb_tag: <Tag>
 wandb_group: <group>
 log_path: /home/vinaylanka/logs/log_voRL/training
-n_envs: 1
+n_envs: 100
 seed: 0
 total_timesteps: 25e6
 

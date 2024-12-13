@@ -122,7 +122,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             device=self.device,
             gamma=self.gamma,
             gae_lambda=self.gae_lambda,
-            n_envs=1,
+            n_envs=100,
         )
         self.policy = self.policy_class(  # type: ignore[assignment]
             self.observation_space, self.action_space, self.lr_schedule, use_sde=self.use_sde, **self.policy_kwargs

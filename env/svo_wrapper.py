@@ -246,7 +246,8 @@ class VecSVOEnv(VecEnv):
 
         for i in range(nr_resets):
             env_id = int(reset_idx[i])
-            info[env_id]['terminal_observation'] = self.last_observations[env_id, :]
+            if self.last_observations is not None:
+                info[env_id]['terminal_observation'] = self.last_observations[env_id, :]
 
         return info
 

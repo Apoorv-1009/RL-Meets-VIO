@@ -17,14 +17,20 @@ from env.utils.trajectory_alignment import align_umeyama
 from env.utils.visualization import visualize_RL_image, add_text_to_image
 from rl_algorithms.buffers import MaskedRolloutBuffer
 
-
+"""
+The evaluation_epoch function runs a single evaluation loop for a reinforcement
+learning (RL) policy in the validation environment. It simulates multiple 
+episodes, collects metrics, and optionally visualizes trajectories and actions.
+"""
 def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, config):
     action_space = val_env.action_space
+    # Resets the environment to the initial state, optionally using ground-truth initialization
     obs = val_env.reset(use_gt_initialization=config.use_gt_initialization)
 
     nr_eval_seqs = len(val_env.dataloader.trajectories_paths)
     last_episode_starts = np.ones([nr_eval_seqs])
 
+    # Allocate storage for metrics
     completed_bool = np.zeros([nr_eval_seqs], dtype='bool')
     nr_samples_traj = np.zeros([nr_eval_seqs])
     eval_reward = np.zeros([nr_eval_seqs])
@@ -38,11 +44,16 @@ def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, 
 
     norm_check_keyframe_dist = np.zeros([nr_eval_seqs])
 
+    # Iterate through max_eval_steps for each sequence in the validation set
     for i_eval in tqdm.tqdm(range(config.max_eval_steps)):
         obs_tensor = obs_as_tensor(obs, policy.device)
         with th.no_grad():
+            # Do a forward pass
             actions, values, log_probs = policy.forward(obs_tensor, deterministic=True)
+            # Returns actions chosen by the policy, predicted state values (used for advantage computation)
+            # logarithmic probabilities of the actions
 
+        # Ensure actions respect the environment's action space limits
         clipped_actions = actions.cpu().numpy()
         if isinstance(action_space, spaces.Box):
             if policy.squash_output:
@@ -50,10 +61,13 @@ def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, 
             else:
                 clipped_actions = np.clip(actions, action_space.low, action_space.high)
 
+        # Simulate a step in the environment using chosen actions
         obs, rewards, dones, infos, valid_mask = val_env.step(clipped_actions,
                                                               use_RL_actions_bool=config.use_rl_actions,
                                                               use_gt_initialization=config.use_gt_initialization)
+        # dones: Whether the episode ended
 
+        # Store trajectory data
         rollout_buffer.add(
             obs,  # type: ignore[arg-type]
             actions.cpu().numpy(),
@@ -68,6 +82,7 @@ def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, 
         for i_info, info_dict in enumerate(infos):
             completed_bool[i_info] = np.logical_or(info_dict['new_seq'], completed_bool[i_info])
             if not completed_bool[i_info]:
+                # Track poses and rewards
                 eval_pose[i_info, i_eval, :3] = info_dict['position']
                 eval_pose[i_info, i_eval, 3:] = info_dict['rotation']
                 eval_gt_pose[i_info, i_eval, :3] = info_dict['gt_position']
@@ -84,6 +99,7 @@ def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, 
             assert ((dist_last_keyframe - unnormalized_obs[:, 1]) < 1e-5).all()
             assert np.logical_or(dist_last_keyframe == norm_check_keyframe_dist + 1,
                                  dist_last_keyframe == 0).all()
+        # Align predicted keyframes with the ground truth to ensure the validity of the pose data
         norm_check_keyframe_dist = dist_last_keyframe
 
         eval_keyframe_selection[:, i_eval] = dist_last_keyframe == 0
@@ -140,7 +156,6 @@ def evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, 
             'dones': eval_dones,
             'returns': rollout_buffer.returns,
             'sequence_names': sequence_names}
-
 
 def visualize_subtrajectories(eval_dict, test_seq_ids, test_split, config):
     new_subtraj = np.cumsum(eval_dict['dones'], axis=1)
@@ -242,11 +257,24 @@ def save_eval_dict(eval_dict, config):
                             keyframe_selection=eval_dict['keyframe_selection'][i_seq, :nr_samples],
                             )
 
+"""
+The evaluate function is a high-level wrapper that runs the evaluation process
+for a reinforcement learning (RL) policy in a given environment.
+It uses the helper functions evaluation_epoch and save_eval_dict to perform 
+the actual evaluation and save the results.
+"""
 def evaluate(val_env, policy, rollout_buffer, test_seq_ids, test_split, config):
+    # Disables training mode for the policy, ensures the policy doesn't update its 
+    # parameters or use layers like dropout during evaluation.
     policy.set_training_mode(False)
 
+    # Calls the evaluation_epoch function to simulate episodes in the validation environment
+    # The function steps through the environment using the policy's and
+    # collects metrics like rewards, trajectory data, etc.
+    # Results are stored in a dictionary (eval_dict) for further processing
     eval_dict = evaluation_epoch(val_env, policy, rollout_buffer, test_seq_ids, test_split, config)
 
+    # Save the results (eval_dict) from the evaluation into files for future analysis
     save_eval_dict(eval_dict, config)
 
 def dummy_lr_fn(val: float):
@@ -267,8 +295,9 @@ def save_config(config):
     with open(os.path.join(config.eval_log, "config.yaml"), "w") as f:
         OmegaConf.save(to_copy_config, f)
 
-
 def evaluate_policy(weight_path, config):
+
+    # Set up validation environment
     test_seq_ids = config.test_seq_ids if config.test_seq_ids != -1 else list(np.arange(config.nr_seqs))
     num_envs = len(test_seq_ids)
     val_env = VecSVOEnv(config.svo_params_file, config.svo_calib_file, config.dataset_dir, num_envs,
@@ -277,18 +306,22 @@ def evaluate_policy(weight_path, config):
     test_split = val_env.dataloader.test_split
     config.max_eval_steps = config.max_eval_steps if config.max_eval_steps != -1 else int(val_env.dataloader.nr_samples_per_traj.max())
 
+    # Configure the policy encoder to match the environment's observation and critique dimensions
     encoder_kwargs = dict(
         variable_feature_dim=3,
         obs_dim_variable=val_env.agent_obs_dim_variable,
         obs_dim_fixed=val_env.agent_obs_dim_fixed,
         critique_dim=val_env.critique_dim,
     )
+    # Define the policy parameters
     policy_kwargs = dict(
         encoder_kwargs=encoder_kwargs,
         activation_fn=th.nn.ReLU,
         net_arch=dict(pi=[256, 256], vf=[256, 256]),
         log_std_init=-0.0,
     )
+
+    # Initialize the policy
     policy = CustomActorCriticPolicy(val_env.observation_space, val_env.action_space, lr_schedule=dummy_lr_fn(1e-4), **policy_kwargs)
 
     device = th.device("cuda:0" if th.cuda.is_available() else "cpu")
@@ -299,7 +332,7 @@ def evaluate_policy(weight_path, config):
     val_env.load_rms(weight_path[:-4] + '_rms.npz')
     print("RMS Loded")
 
-    # Buffer to compute return
+    # Initialize Masked Rollout Buffer to store trajectories during evaluation
     rollout_buffer = MaskedRolloutBuffer(
         config.max_eval_steps,
         val_env.observation_space,  # type: ignore[arg-type]
@@ -310,8 +343,8 @@ def evaluate_policy(weight_path, config):
         n_envs=num_envs,
     )
 
+    # Call evaluation function
     evaluate(val_env, policy, rollout_buffer, test_seq_ids, test_split, config)
-
 
 @hydra.main(config_path='config', config_name='config_eval', version_base=None)
 def main(config):

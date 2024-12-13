@@ -38,10 +38,10 @@ class EurocLoader:
         self.img_h, self.img_w = 480, 752
 
         if traj_name:
-            print("[EuRoC Dataloader] Loading trajectory: %s" % traj_name)
+            # print("[EuRoC Dataloader] Loading trajectory: %s" % traj_name)
             self.extract_trajectory(traj_name)
         else:
-            print("[EuRoC Dataloader] Loading trajectories")
+            # print("[EuRoC Dataloader] Loading trajectories")
             self.extract_trajectories()
 
         self.extract_poses_images()
@@ -56,7 +56,9 @@ class EurocLoader:
         self.trajectories_paths = [traj for traj in trajectories if self.is_test_scene(traj)]
         self.trajectories_paths.sort()
 
-        print(self.trajectories_paths)
+        # print("self.trajectories_paths: ",self.trajectories_paths)
+        # print("self.val_traj_ids: ",self.val_traj_ids)
+        self.trajectories_paths = [self.trajectories_paths[0] for i in range(self.num_envs)]
 
         if self.val_traj_ids != -1 and self.val_traj_ids is not None:
             self.trajectories_paths = [self.trajectories_paths[i] for i in self.val_traj_ids]
@@ -170,7 +172,8 @@ class EurocLoader:
         traj_time_idx = (self.internal_idx - self.start_dataloader_idx)
         traj_time_idx = traj_time_idx.astype('int')
 
-        poses = np.zeros([self.num_envs, int(self.nr_samples_per_traj), 7])
+        # Just changed int int(self.nr_samples_per_traj) to len(self.nr_samples_per_traj)
+        poses = np.zeros([self.num_envs, len(self.nr_samples_per_traj), 7])
         # poses = np.zeros([self.num_envs, 7])
         image_paths = []
         for i in range(self.num_envs):

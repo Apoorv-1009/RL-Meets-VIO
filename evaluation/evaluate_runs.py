@@ -9,11 +9,11 @@ from env.utils.trajectory_alignment import align_umeyama
 from env.utils.compute_error import ate_translation, ate_rotation
 
 METHODS = {
-    'with_RL': <path_to_dir>,
-    'wo_RL': <path_to_dir>,
+    'with_RL': '/home/vinaylanka/logs/log_voRL/playground/2024-12-12_23-22-16',
+    # 'wo_RL': <path_to_dir>,
 }
-VISUALIZE_RESULTS= False
-OUT_DIR = '/logs/log_voRL/playground/Analysis'
+VISUALIZE_RESULTS= True
+OUT_DIR = '/home/vinaylanka/logs/log_voRL/playground/Analysis'
 
 
 def compute_errors(gt_poses, poses):
@@ -57,6 +57,7 @@ def evaluate_policy(method_dict):
         # Find the smallest trajectory
         for i_method, (method, dir_results) in enumerate(method_dict.items()):
             method_results = np.load(os.path.join(dir_results, 'results', sequence + '.npz'))
+            # print(method_results['dones'].shape)
             first_mask = np.cumsum(method_results['dones'], axis=0) == 0
             if min_traj_mask is None:
                 min_traj_mask = first_mask
@@ -77,15 +78,20 @@ def evaluate_policy(method_dict):
             else:
                 first_mask = new_subtraj == 0
 
-            method_poses = method_results['poses'][first_mask, :]
+            method_poses = method_results['poses']#[first_mask, :]
             if gt_poses is None:
                 gt_poses = method_results['gt_poses']
             else:
                 assert not (np.abs(gt_poses - method_results['gt_poses']) > 1e-4).any()
 
             nr_finished_seqs[i_seq, i_method] += 1 if method_results['gt_poses'].shape[0] == first_mask.sum() else 0
-
-            ate_transl, ate_rot = compute_errors(gt_poses[first_mask, :], method_poses)
+            if (len(gt_poses) == 0):
+                print("Break")
+                break
+            print("length gt poses:",len(gt_poses))
+            print("length method poses: ",len(method_poses))
+            # Made a change in the line below. original line: ate_transl, ate_rot = compute_errors(gt_poses[first_mask, :], method_poses
+            ate_transl, ate_rot = compute_errors(gt_poses[first_mask, :], method_poses[first_mask, :])
             ate_transl_min_traj, ate_rot_min_traj = compute_errors(gt_poses[min_traj_mask, :],
                                                                    method_results['poses'][min_traj_mask, :])
 
@@ -104,7 +110,9 @@ def evaluate_policy(method_dict):
 
             if VISUALIZE_RESULTS:
                 # Trajectory Plot
-                s, R, t = align_umeyama(gt_poses[None, first_mask, :3], method_poses[None, :, :3])
+                # Changed this line. Was originally: s, R, t = align_umeyama(gt_poses[None, first_mask, :3], method_poses[None, :, :3])
+                # s, R, t = align_umeyama(gt_poses[None, :, :3], method_poses[None, :, :3])
+                s, R, t = align_umeyama(gt_poses[None, first_mask, :3], method_poses[None, first_mask, :3])
                 aligned_positions = s[:, None, None] * np.matmul(R, method_poses[None, :, :3, None]).squeeze(3) + t[:, None, :]
                 aligned_positions = aligned_positions.squeeze(0)
 
@@ -121,9 +129,41 @@ def evaluate_policy(method_dict):
                 seq_plot_x.legend()
                 seq_plot_x.xaxis.set_major_locator(plt.MaxNLocator(5))
                 seq_plot_x.yaxis.set_major_locator(plt.MaxNLocator(5))
-
             key_frame_selection = method_results['keyframe_selection'][first_mask]
             print("Method: {}, Number of Keyframes: {}".format(method, key_frame_selection.sum()))
+
+    if VISUALIZE_RESULTS:
+        # Create a new figure for full trajectory comparison
+        full_fig, full_ax = plt.subplots(figsize=(10, 10))
+
+        for i_method, (method, dir_results) in enumerate(method_dict.items()):
+            method_results = np.load(os.path.join(dir_results, 'results', sequence + '.npz'))
+
+            # Extract full poses and ground truth
+            method_poses = method_results['poses']
+            gt_poses = method_results['gt_poses']
+
+            # Align estimated trajectory to ground truth
+            s, R, t = align_umeyama(gt_poses[None, :, :3], method_poses[None, :, :3])
+            aligned_positions = (
+                s[:, None, None] * np.matmul(R, method_poses[None, :, :3, None]).squeeze(3) + t[:, None, :]
+            ).squeeze(0)
+
+            # Plot trajectories
+            full_ax.plot(gt_poses[:, 0], gt_poses[:, 1], label="Ground Truth", linestyle="--")
+            full_ax.plot(aligned_positions[:, 0], aligned_positions[:, 1], label=f"{method}", alpha=0.8)
+
+        # Formatting
+        full_ax.set_title("Full Trajectory Comparison")
+        full_ax.set_xlabel("x [m]")
+        full_ax.set_ylabel("y [m]")
+        full_ax.legend()
+        full_ax.axis("equal")
+
+        # Save the plot
+        full_fig.savefig(os.path.join(OUT_DIR, "full_trajectories.png"), bbox_inches="tight", dpi=200)
+        plt.close(full_fig)
+
 
     # Print finished sequences
     for i_method, method in enumerate(method_dict.keys()):
@@ -216,10 +256,13 @@ def save_to_csv(rl_polices, policy_results):
 
 def main():
     dir_content = os.listdir(METHODS['with_RL'])
+
     if 'results' in dir_content:
+        print("with results")
         policy_results = evaluate_policy(METHODS)
         save_to_csv([METHODS['with_RL'].split(os.sep)[-1]], [policy_results])
     else:
+        print("without results")
         rl_polices = [policy_dir for policy_dir in dir_content if 'config.yaml' != policy_dir]
         rl_polices.sort()
         policy_results = []
